@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Бюллетень-Хит</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0d1a;
+    color: #eee;
+    font-family: 'Press Start 2P', monospace;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    image-rendering: pixelated;
+  }
+  
+  #wrapper {
+    display: flex;
+    width: 100%;
+    max-width: 680px;
+    height: 100vh;
+    max-height: 860px;
+    background: #111;
+    border: 4px solid #333;
+    box-shadow: 0 0 40px #000;
+  }
+  
+  #game-area {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    background: #0f0f1a;
+  }
+  
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(#1a1a2e 0%, #16213e 65%, #0f3460 100%);
+    cursor: crosshair;
+  }
+  
+  #ui {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    font-size: 10px;
+    text-shadow: 2px 2px 0 #000;
+    z-index: 10;
+  }
+  #score { color: #0f0; }
+  #progress { color: #ff0; }
+  
+  /* Лебеди сверху */
+  #swans-top {
+    position: absolute;
+    top: 36px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 36px;
+    pointer-events: none;
+    z-index: 15;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  #swans-top.visible { opacity: 1; }
+  #swans-top .swan {
+    display: inline-block;
+    margin: 0 6px;
+    animation: float 1.2s ease-in-out infinite alternate;
+  }
+  #swans-top .swan:nth-child(2) { animation-delay: 0.3s; }
+  #swans-top .swan:nth-child(3) { animation-delay: 0.6s; }
+  @keyframes float {
+    from { transform: translateY(0) rotate(-6deg); }
+    to   { transform: translateY(-10px) rotate(6deg); }
+  }
+  
+  /* Правая панель */
+  #vote-panel {
+    width: 150px;
+    background: #1a1a2e;
+    border-left: 3px solid #333;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    font-size: 8px;
+    overflow-y: auto;
+  }
+  #vote-panel h3 {
+    color: #0f0;
+    text-align: center;
+    margin-bottom: 12px;
+    font-size: 9px;
+    line-height: 1.4;
+  }
+  .vote-row { margin-bottom: 11px; }
+  .vote-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+    color: #ccc;
+  }
+  .vote-bar-bg {
+    height: 13px;
+    background: #222;
+    border: 1px solid #444;
+    position: relative;
+  }
+  .vote-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease-out;
+  }
+  .vote-pct {
+    position: absolute;
+    right: 3px;
+    top: 0;
+    line-height: 13px;
+    font-size: 7px;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
+  }
+  
+  /* Overlay */
+  #overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 40;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+  #overlay h1 {
+    font-size: 18px;
+    margin-bottom: 14px;
+    text-shadow: 3px 3px 0 #300;
+    line-height: 1.35;
+  }
+  #overlay .swans {
+    font-size: 48px;
+    margin: 16px 0;
+    animation: dance 0.55s infinite alternate;
+  }
+  @keyframes dance {
+    from { transform: translateX(-20px) rotate(-12deg); }
+    to   { transform: translateX(20px) rotate(12deg); }
+  }
+  #overlay p { font-size: 11px; margin: 8px 0; color: #fff; line-height: 1.5; }
+  #overlay button {
+    margin-top: 18px;
+    padding: 12px 24px;
+    background: #0a0;
+    border: 3px solid #0f0;
+    color: #000;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  
+  #ru-flag {
+    display: none;
+    width: 160px;
+    height: 100px;
+    margin: 12px 0;
+    border: 3px solid #fff;
+    box-shadow: 0 0 20px rgba(255,255,255,0.4);
+  }
+  #ru-flag .stripe { height: 33.333%; }
+  #ru-flag .w { background: #fff; }
+  #ru-flag .b { background: #0039a6; }
+  #ru-flag .r { background: #d52b1e; }
+  
+  /* Start screen */
+  #start-screen {
+    position: absolute;
+    inset: 0;
+    background: #0f0f1a;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 16px;
+  }
+  #start-screen h1 {
+    font-size: 16px;
+    color: #0f0;
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+  #start-screen p {
+    font-size: 9px;
+    color: #aaa;
+    margin: 5px 0;
+    max-width: 300px;
+    line-height: 1.55;
+  }
+  #start-screen button {
+    margin-top: 20px;
+    padding: 14px 28px;
+    background: #0a0;
+    border: 3px solid #0f0;
+    color: #000;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  #start-screen .hint {
+    margin-top: 14px;
+    font-size: 8px;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+<div id="wrapper">
+  <div id="game-area">
+    <canvas id="c"></canvas>
+    
+    <div id="ui">
+      <div id="score">ОЧКИ: 0</div>
+      <div id="progress">0 / 100</div>
+    </div>
+    
+    <div id="swans-top">
+      <span class="swan">🦢</span>
+      <span class="swan">🦢</span>
+      <span class="swan" id="swan3" style="display:none">🦢</span>
+    </div>
+    
+    <div id="overlay">
+      <h1 id="overlay-title">КРАХ РОССИИ</h1>
+      <div id="ru-flag">
+        <div class="stripe w"></div>
+        <div class="stripe b"></div>
+        <div class="stripe r"></div>
+      </div>
+      <div class="swans" id="overlay-swans">🦢 🦢 🦢</div>
+      <p id="overlay-msg"></p>
+      <p id="overlay-score"></p>
+      <button id="restart-btn">ЕЩЁ РАЗ</button>
+    </div>
+    
+    <div id="start-screen">
+      <h1>Выборы 2026</h1>
+      <p>Будущее страны под угрозой!</p>
+      <p style="color:#f44">Не дай сомнительным партиям прийти к власти!</p>
+      <button id="start-btn">НАЧАТЬ</button>
+    </div>
+  </div>
+  
+  <div id="vote-panel">
+    <h3>ГОЛОСА<br>В УРНЕ</h3>
+    <div id="vote-rows"></div>
+    <div style="margin-top:auto; padding-top:8px; border-top:1px solid #333; color:#666; font-size:7px; text-align:center;">
+      всего: <span id="total-landed">0</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const progressEl = document.getElementById('progress');
+  const overlay = document.getElementById('overlay');
+  const startScreen = document.getElementById('start-screen');
+  const voteRows = document.getElementById('vote-rows');
+  const totalLandedEl = document.getElementById('total-landed');
+  const swansTop = document.getElementById('swans-top');
+  const swan3 = document.getElementById('swan3');
+  
+  // ========== HARDCODED CONFIG ==========
+  const CFG = {
+    total: 100,
+    speed0: 150,          // px per second (начальная)
+    speed1: 300,         // px per second (конечная)
+    spawnInterval: 850,  // мс между спавнами (больше = реже)
+    maxOnScreen: 5,      // максимум одновременно падающих
+    yablokoCritical: 10,
+    // фиксированный шаг времени для одинаковой скорости везде
+    fixedDt: 1 / 60      // 60 FPS логика
+  };
+  
+  // Точное распределение (веса = количество)
+  const PARTIES = [
+    { id: 'er',   name: 'ЕДИНАЯ\nРОССИЯ',       short: 'ЕР',   color: '#c41e3a', isGood: true,  weight: 10 },
+    { id: 'nl',   name: 'НОВЫЕ\nЛЮДИ',          short: 'НЛ',   color: '#00bfff', isGood: false, weight: 20 },
+    { id: 'ldpr', name: 'ЛДПР',                 short: 'ЛДПР', color: '#0033a0', isGood: false, weight: 17 },
+    { id: 'kprf', name: 'КПРФ',                 short: 'КПРФ', color: '#cc0000', isGood: false, weight: 16 },
+    { id: 'sr',   name: 'СПРАВЕДЛИВАЯ\nРОССИЯ', short: 'СР',   color: '#ff8c00', isGood: false, weight: 7  },
+    { id: 'yabl', name: 'ЯБЛОКО',               short: 'ЯБЛ',  color: '#2e8b57', isGood: false, weight: 30 }
+  ];
+  
+  // ========== STATE ==========
+  let W, H, dpr;
+  let ballots = [];
+  let particles = [];
+  let score = 0;
+  let spawned = 0;
+  let gameActive = false;
+  let lastSpawn = 0;
+  let animId = 0;
+  let currentSpawnInterval = CFG.spawnInterval;
+  
+  let votes = {};
+  let totalLanded = 0;
+  
+  // Размер бюллетеней (×2 от оригинала)
+  const BW = 130;
+  const BH = 68;
+  
+  const URN = { w: 140, h: 56 };
+  
+  // Аккумулятор для фиксированного dt
+  let accumulator = 0;
+  let lastT = 0;
+  
+  // ========== AUDIO ==========
+  let audioCtx = null;
+  function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+  
+  function playTone(freq, start, dur, type, vol) {
+    const ctx = getAudio();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol || 0.12, ctx.currentTime + start);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime + start);
+    osc.stop(ctx.currentTime + start + dur + 0.05);
+  }
+  
+  function playFanfare() {
+    const notes = [523, 659, 784, 1047, 784, 1047, 1175, 1319];
+    notes.forEach((f, i) => playTone(f, i * 0.18, 0.35, 'square', 0.14));
+    playTone(131, 0, 1.6, 'triangle', 0.1);
+    playTone(165, 0.9, 0.8, 'triangle', 0.08);
+  }
+  
+  function playSad() {
+    playTone(392, 0, 0.5, 'sawtooth', 0.1);
+    playTone(349, 0.4, 0.6, 'sawtooth', 0.1);
+    playTone(311, 0.9, 0.9, 'sawtooth', 0.12);
+  }
+  
+  function playSwanWarning() {
+    playTone(880, 0, 0.15, 'sine', 0.08);
+    playTone(988, 0.12, 0.2, 'sine', 0.08);
+  }
+  
+  // ========== VOTE UI ==========
+  function buildVoteUI() {
+    voteRows.innerHTML = '';
+    PARTIES.forEach(p => {
+      votes[p.id] = 0;
+      const row = document.createElement('div');
+      row.className = 'vote-row';
+      row.innerHTML = `
+        <div class="vote-label">
+          <span style="color:${p.color}">${p.short}</span>
+          <span class="cnt" data-id="${p.id}">0</span>
+        </div>
+        <div class="vote-bar-bg">
+          <div class="vote-bar" data-id="${p.id}" style="background:${p.color}"></div>
+          <span class="vote-pct" data-id="${p.id}">0%</span>
+        </div>`;
+      voteRows.appendChild(row);
+    });
+  }
+  
+  function updateVoteUI() {
+    totalLandedEl.textContent = totalLanded;
+    PARTIES.forEach(p => {
+      const cnt = votes[p.id] || 0;
+      const pct = totalLanded > 0 ? Math.round((cnt / totalLanded) * 100) : 0;
+      const bar = document.querySelector(`.vote-bar[data-id="${p.id}"]`);
+      const pctEl = document.querySelector(`.vote-pct[data-id="${p.id}"]`);
+      const cntEl = document.querySelector(`.cnt[data-id="${p.id}"]`);
+      if (bar) bar.style.width = pct + '%';
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (cntEl) cntEl.textContent = cnt;
+    });
+  }
+  
+  function updateSwans() {
+    const y = votes.yabl || 0;
+    if (y >= 4) {
+      swansTop.classList.add('visible');
+      swan3.style.display = 'none';
+    }
+    if (y >= 7) {
+      swan3.style.display = 'inline-block';
+    }
+  }
+  
+  // ========== UTILS ==========
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.floor(rect.width);
+    H = Math.floor(rect.height);
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    URN.x = (W - URN.w) / 2;
+    URN.y = H - URN.h - 10;
+  }
+  
+  function pickParty() {
+    const totalW = PARTIES.reduce((s, p) => s + p.weight, 0);
+    let r = Math.random() * totalW;
+    for (const p of PARTIES) {
+      r -= p.weight;
+      if (r <= 0) return p;
+    }
+    return PARTIES[0];
+  }
+  
+  function getCurrentSpeed() {
+    // скорость в пикселях в секунду
+    const t = Math.min(spawned / CFG.total, 1);
+    return CFG.speed0 + (CFG.speed1 - CFG.speed0) * t;
+  }
+  
+  // ========== BALLOT ==========
+  function spawnBallot() {
+    if (spawned >= CFG.total) return;
+    if (ballots.length >= CFG.maxOnScreen) return; // не захламляем
+    
+    const party = pickParty();
+    const w = BW + (Math.random() * 16 - 8);
+    const h = BH;
+    ballots.push({
+      x: 10 + Math.random() * (W - 20 - w),
+      y: -h - 12,
+      w, h,
+      vy: getCurrentSpeed() * (0.92 + Math.random() * 0.16), // px/s
+      party,
+      rot: (Math.random() - 0.5) * 0.2,
+      dead: false
+    });
+    spawned++;
+    progressEl.textContent = spawned + ' / ' + CFG.total;
+  }
+  
+  // ========== PARTICLES ==========
+  function explode(b) {
+    const n = 18 + Math.floor(Math.random() * 10);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 70 + Math.random() * 160;
+      particles.push({
+        x: b.x + b.w / 2,
+        y: b.y + b.h / 2,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 50,
+        life: 0.6 + Math.random() * 0.4,
+        maxLife: 0.95,
+        color: b.party.color,
+        size: 4 + Math.random() * 5
+      });
+    }
+  }
+  
+  function landParticles(b) {
+    for (let k = 0; k < 7; k++) {
+      particles.push({
+        x: b.x + b.w / 2,
+        y: URN.y + 6,
+        vx: (Math.random() - 0.5) * 90,
+        vy: -30 - Math.random() * 45,
+        life: 0.5,
+        maxLife: 0.5,
+        color: b.party.color,
+        size: 3.5
+      });
+    }
+  }
+  
+  // ========== DRAW ==========
+  function drawPixelRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+  }
+  
+  function drawBallot(b) {
+    ctx.save();
+    ctx.translate(b.x + b.w / 2, b.y + b.h / 2);
+    ctx.rotate(b.rot);
+    
+    drawPixelRect(-b.w/2, -b.h/2, b.w, b.h, '#f5f1e4');
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-b.w/2 + 1, -b.h/2 + 1, b.w - 2, b.h - 2);
+    
+    drawPixelRect(-b.w/2 + 5, -b.h/2 + 5, b.w - 10, 9, b.party.color);
+    
+    ctx.fillStyle = '#111';
+    ctx.font = 'bold 13px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lines = b.party.name.split('\n');
+    lines.forEach((line, i) => {
+      ctx.fillText(line, 0, (i - (lines.length - 1) / 2) * 16 + 6);
+    });
+    
+    ctx.restore();
+  }
+  
+  function drawUrn() {
+    drawPixelRect(URN.x, URN.y + 9, URN.w, URN.h - 9, '#3a3a3a');
+    drawPixelRect(URN.x - 7, URN.y, URN.w + 14, 13, '#555');
+    drawPixelRect(URN.x + 22, URN.y + 3, URN.w - 44, 6, '#111');
+    ctx.fillStyle = '#0f0';
+    ctx.font = '9px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('УРНА', URN.x + URN.w / 2, URN.y + URN.h - 8);
+  }
+  
+  function drawParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 420 * dt;
+      p.life -= dt;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      ctx.globalAlpha = p.life / p.maxLife;
+      drawPixelRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size, p.color);
+      ctx.globalAlpha = 1;
+    }
+  }
+  
+  // ========== FIXED TIMESTEP LOOP ==========
+  function loop(t) {
+    if (!gameActive) return;
+    
+    // реальное время с прошлого кадра
+    let frameTime = (t - lastT) / 1000;
+    if (frameTime > 0.05) frameTime = 0.05; // защита от лагов
+    lastT = t;
+    
+    accumulator += frameTime;
+    
+    // обновляем логику фиксированным шагом (одинаково на всех браузерах)
+    while (accumulator >= CFG.fixedDt) {
+      update(CFG.fixedDt);
+      accumulator -= CFG.fixedDt;
+    }
+    
+    // рисуем
+    render();
+    
+    animId = requestAnimationFrame(loop);
+  }
+  
+  function update(dt) {
+    // спавн
+    lastSpawn += dt * 1000;
+    if (spawned < CFG.total && lastSpawn >= currentSpawnInterval) {
+      spawnBallot();
+      lastSpawn = 0;
+      // слегка ускоряем появление к концу
+      currentSpawnInterval = Math.max(550, currentSpawnInterval * 0.997);
+    }
+    
+    // движение бюллетеней
+    for (let i = ballots.length - 1; i >= 0; i--) {
+      const b = ballots[i];
+      if (b.dead) continue;
+      
+      b.y += b.vy * dt;          // vy уже в px/s
+      b.rot += (b.rot > 0 ? 1 : -1) * 0.25 * dt;
+      
+      if (b.y + b.h > URN.y + 5) {
+        votes[b.party.id] = (votes[b.party.id] || 0) + 1;
+        totalLanded++;
+        updateVoteUI();
+        landParticles(b);
+        ballots.splice(i, 1);
+        
+        if (b.party.id === 'yabl') {
+          updateSwans();
+          if (votes.yabl === 4 || votes.yabl === 7) playSwanWarning();
+          
+          if (votes.yabl >= CFG.yablokoCritical) {
+            gameOverYabloko();
+            return;
+          }
+        }
+      }
+    }
+    
+    // частицы
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 420 * dt;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    
+    // конец всех бюллетеней
+    if (spawned >= CFG.total && ballots.length === 0 && particles.length < 4) {
+      endGame();
+    }
+  }
+  
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    
+    // scanlines
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+    
+    drawUrn();
+    for (const b of ballots) if (!b.dead) drawBallot(b);
+    
+    // частицы рисуем отдельно (без dt, просто текущее состояние)
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      drawPixelRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size, p.color);
+    }
+    ctx.globalAlpha = 1;
+    
+    scoreEl.textContent = 'ОЧКИ: ' + score;
+  }
+  
+  // ========== INPUT ==========
+  function handleClick(cx, cy) {
+    if (!gameActive) return;
+    for (let i = ballots.length - 1; i >= 0; i--) {
+      const b = ballots[i];
+      if (b.dead) continue;
+      if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+        if (b.party.isGood) {
+          score = Math.max(0, score - 15);
+        } else {
+          score += 12 + Math.floor(b.vy / 20);
+        }
+        explode(b);
+        ballots.splice(i, 1);
+        return;
+      }
+    }
+  }
+  
+  canvas.addEventListener('pointerdown', e => {
+    const rect = canvas.getBoundingClientRect();
+    handleClick(e.clientX - rect.left, e.clientY - rect.top);
+  });
+  
+  // ========== FLOW ==========
+  function resetVotes() {
+    totalLanded = 0;
+    PARTIES.forEach(p => votes[p.id] = 0);
+    updateVoteUI();
+    swansTop.classList.remove('visible');
+    swan3.style.display = 'none';
+  }
+  
+  function startGame() {
+    try { getAudio().resume(); } catch(e){}
+    ballots = [];
+    particles = [];
+    score = 0;
+    spawned = 0;
+    gameActive = true;
+    lastSpawn = 0;
+    lastT = performance.now();
+    accumulator = 0;
+    currentSpawnInterval = CFG.spawnInterval;
+    
+    resetVotes();
+    
+    startScreen.style.display = 'none';
+    overlay.style.display = 'none';
+    document.getElementById('ru-flag').style.display = 'none';
+    document.getElementById('overlay-swans').style.display = 'none';
+    scoreEl.textContent = 'ОЧКИ: 0';
+    progressEl.textContent = '0 / ' + CFG.total;
+    
+    cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(loop);
+  }
+  
+  function gameOverYabloko() {
+    gameActive = false;
+    cancelAnimationFrame(animId);
+    
+    document.getElementById('overlay-title').textContent = 'КРАХ РОССИИ';
+    document.getElementById('overlay-title').style.color = '#f00';
+    document.getElementById('ru-flag').style.display = 'none';
+    document.getElementById('overlay-swans').style.display = 'block';
+    document.getElementById('overlay-msg').textContent =
+      'Яблоко набрало ' + votes.yabl + ' голосов в урне.\nТанец белых лебедей начался.';
+    document.getElementById('overlay-score').textContent =
+      'Очки: ' + score + ' | Всего в урне: ' + totalLanded;
+    overlay.style.display = 'flex';
+    playSad();
+  }
+  
+  function endGame() {
+    gameActive = false;
+    cancelAnimationFrame(animId);
+    
+    let leader = PARTIES[0];
+    PARTIES.forEach(p => {
+      if ((votes[p.id] || 0) > (votes[leader.id] || 0)) leader = p;
+    });
+    
+    const erWins = leader.id === 'er';
+    
+    if (erWins) {
+      document.getElementById('overlay-title').textContent = 'ПОБЕДА ЕДИНОЙ РОССИИ!';
+      document.getElementById('overlay-title').style.color = '#0f0';
+      document.getElementById('ru-flag').style.display = 'block';
+      document.getElementById('overlay-swans').style.display = 'none';
+      document.getElementById('overlay-msg').textContent =
+        'Флаг поднят. Гимн звучит.\nСтабильность обеспечена.';
+      playFanfare();
+    } else {
+      document.getElementById('overlay-title').textContent = 'ПОБЕДИЛА СОМНИТЕЛЬНАЯ ПАРТИЯ...';
+      document.getElementById('overlay-title').style.color = '#ff0';
+      document.getElementById('ru-flag').style.display = 'none';
+      document.getElementById('overlay-swans').style.display = 'none';
+      document.getElementById('overlay-msg').textContent =
+        'Победила сомнительная партия «' + leader.short + '».\nНаступают тяжёлые времена...';
+      playSad();
+    }
+    
+    document.getElementById('overlay-score').textContent =
+      'Очки: ' + score + ' | В урне: ' + totalLanded +
+      '\nЛидер: ' + leader.short + ' (' + (votes[leader.id] || 0) + ')';
+    overlay.style.display = 'flex';
+  }
+  
+  // ========== UI ==========
+  document.getElementById('start-btn').onclick = startGame;
+  document.getElementById('restart-btn').onclick = startGame;
+  
+  // init
+  buildVoteUI();
+  window.addEventListener('resize', resize);
+  resize();
+  document.body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+})();
+</script>
+</body>
+</html>
