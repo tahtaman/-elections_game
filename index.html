@@ -290,9 +290,9 @@
   
   // ========== HARDCODED CONFIG ==========
   const CFG = {
-    total: 100,
-    speed0: 150,          // px per second (начальная)
-    speed1: 300,         // px per second (конечная)
+    total: 200,
+    speed0: 170,          // px per second (начальная)
+    speed1: 400,         // px per second (конечная)
     spawnInterval: 850,  // мс между спавнами (больше = реже)
     maxOnScreen: 5,      // максимум одновременно падающих
     yablokoCritical: 10,
@@ -302,12 +302,12 @@
   
   // Точное распределение (веса = количество)
   const PARTIES = [
-    { id: 'er',   name: 'ЕДИНАЯ\nРОССИЯ',       short: 'ЕР',   color: '#c41e3a', isGood: true,  weight: 10 },
-    { id: 'nl',   name: 'НОВЫЕ\nЛЮДИ',          short: 'НЛ',   color: '#00bfff', isGood: false, weight: 20 },
-    { id: 'ldpr', name: 'ЛДПР',                 short: 'ЛДПР', color: '#0033a0', isGood: false, weight: 17 },
-    { id: 'kprf', name: 'КПРФ',                 short: 'КПРФ', color: '#cc0000', isGood: false, weight: 16 },
-    { id: 'sr',   name: 'СПРАВЕДЛИВАЯ\nРОССИЯ', short: 'СР',   color: '#ff8c00', isGood: false, weight: 7  },
-    { id: 'yabl', name: 'ЯБЛОКО',               short: 'ЯБЛ',  color: '#2e8b57', isGood: false, weight: 30 }
+    { id: 'er',   name: 'ЕДИНАЯ\nРОССИЯ',       short: 'ЕР',   color: '#c41e3a', isGood: true,  weight: 20 },
+    { id: 'nl',   name: 'НОВЫЕ\nЛЮДИ',          short: 'НЛ',   color: '#00bfff', isGood: false, weight: 40 },
+    { id: 'ldpr', name: 'ЛДПР',                 short: 'ЛДПР', color: '#0033a0', isGood: false, weight: 34 },
+    { id: 'kprf', name: 'КПРФ',                 short: 'КПРФ', color: '#cc0000', isGood: false, weight: 32 },
+    { id: 'sr',   name: 'СПРАВЕДЛИВАЯ\nРОССИЯ', short: 'СР',   color: '#ff8c00', isGood: false, weight: 14  },
+    { id: 'yabl', name: 'ЯБЛОКО',               short: 'ЯБЛ',  color: '#2e8b57', isGood: false, weight: 60 }
   ];
   
   // ========== STATE ==========
